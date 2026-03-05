@@ -4574,6 +4574,16 @@ fn modifiers_from_state(mods: ModifiersState) -> Modifiers {
     if mods.iso_level5_shift {
         modifiers |= Modifiers::ISO_LEVEL5_SHIFT;
     }
+    // Mod2 (NumLock) and Caps (CapsLock) are locking modifiers in XKB, meaning their effective
+    // state acts as a toggle. For hold-to-trigger shortcut behavior matching Hyprland, we check
+    // their depressed state instead. XKB standard bits: Caps is bit 1, Mod2 is bit 4.
+    let depressed = mods.serialized.depressed;
+    if (depressed & (1 << 4)) != 0 {
+        modifiers |= Modifiers::MOD2;
+    }
+    if (depressed & (1 << 1)) != 0 {
+        modifiers |= Modifiers::CAPS;
+    }
     modifiers
 }
 

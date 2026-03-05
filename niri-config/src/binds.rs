@@ -55,14 +55,16 @@ pub enum Trigger {
 
 bitflags! {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-    pub struct Modifiers : u8 {
+    pub struct Modifiers : u16 {
         const CTRL = 1;
         const SHIFT = 1 << 1;
         const ALT = 1 << 2;
         const SUPER = 1 << 3;
         const ISO_LEVEL3_SHIFT = 1 << 4;
         const ISO_LEVEL5_SHIFT = 1 << 5;
-        const COMPOSITOR = 1 << 6;
+        const MOD2 = 1 << 6;
+        const CAPS = 1 << 7;
+        const COMPOSITOR = 1 << 8;
     }
 }
 
@@ -981,6 +983,12 @@ impl FromStr for Key {
                 || part.eq_ignore_ascii_case("mod3")
             {
                 modifiers |= Modifiers::ISO_LEVEL5_SHIFT;
+            } else if part.eq_ignore_ascii_case("mod2") || part.eq_ignore_ascii_case("num") {
+                modifiers |= Modifiers::MOD2;
+            } else if part.eq_ignore_ascii_case("mod4") {
+                modifiers |= Modifiers::SUPER;
+            } else if part.eq_ignore_ascii_case("lock") || part.eq_ignore_ascii_case("caps") {
+                modifiers |= Modifiers::CAPS;
             } else {
                 return Err(miette!("invalid modifier: {part}"));
             }
@@ -1109,6 +1117,42 @@ mod tests {
             Key {
                 trigger: Trigger::Keysym(Keysym::a),
                 modifiers: Modifiers::ISO_LEVEL5_SHIFT
+            },
+        );
+
+        assert_eq!(
+            "Mod2+A".parse::<Key>().unwrap(),
+            Key {
+                trigger: Trigger::Keysym(Keysym::a),
+                modifiers: Modifiers::MOD2
+            },
+        );
+        assert_eq!(
+            "Num+A".parse::<Key>().unwrap(),
+            Key {
+                trigger: Trigger::Keysym(Keysym::a),
+                modifiers: Modifiers::MOD2
+            },
+        );
+        assert_eq!(
+            "Mod4+A".parse::<Key>().unwrap(),
+            Key {
+                trigger: Trigger::Keysym(Keysym::a),
+                modifiers: Modifiers::SUPER
+            },
+        );
+        assert_eq!(
+            "Caps+A".parse::<Key>().unwrap(),
+            Key {
+                trigger: Trigger::Keysym(Keysym::a),
+                modifiers: Modifiers::CAPS
+            },
+        );
+        assert_eq!(
+            "Lock+A".parse::<Key>().unwrap(),
+            Key {
+                trigger: Trigger::Keysym(Keysym::a),
+                modifiers: Modifiers::CAPS
             },
         );
     }

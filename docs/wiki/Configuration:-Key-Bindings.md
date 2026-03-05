@@ -22,9 +22,11 @@ Valid modifiers are:
 - `Ctrl` or `Control`;
 - `Shift`;
 - `Alt`;
-- `Super` or `Win`;
+- `Super` or `Win` or `Mod4`;
 - `ISO_Level3_Shift` or `Mod5`—this is the AltGr key on certain layouts;
-- `ISO_Level5_Shift`: can be used with an xkb lv5 option like `lv5:caps_switch`;
+- `ISO_Level5_Shift` or `Mod3`—can be used with an xkb lv5 option like `lv5:caps_switch`;
+- `Mod2` or `Num`—the Num Lock modifier;
+- `Caps` or `Lock`—the Caps Lock modifier;
 - `Mod`.
 
 `Mod` is a special modifier that is equal to `Super` when running niri on a TTY, and to `Alt` when running niri as a nested winit window.

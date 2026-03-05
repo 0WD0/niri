@@ -417,6 +417,8 @@ pub enum ModKey {
     Super,
     IsoLevel3Shift,
     IsoLevel5Shift,
+    Mod2,
+    Caps,
 }
 
 impl ModKey {
@@ -428,6 +430,8 @@ impl ModKey {
             ModKey::Super => Modifiers::SUPER,
             ModKey::IsoLevel3Shift => Modifiers::ISO_LEVEL3_SHIFT,
             ModKey::IsoLevel5Shift => Modifiers::ISO_LEVEL5_SHIFT,
+            ModKey::Mod2 => Modifiers::MOD2,
+            ModKey::Caps => Modifiers::CAPS,
         }
     }
 }
@@ -440,9 +444,11 @@ impl FromStr for ModKey {
             "ctrl" | "control" => Ok(Self::Ctrl),
             "shift" => Ok(Self::Shift),
             "alt" => Ok(Self::Alt),
-            "super" | "win" => Ok(Self::Super),
+            "super" | "win" | "mod4" => Ok(Self::Super),
             "iso_level3_shift" | "mod5" => Ok(Self::IsoLevel3Shift),
             "iso_level5_shift" | "mod3" => Ok(Self::IsoLevel5Shift),
+            "mod2" | "num" => Ok(Self::Mod2),
+            "lock" | "caps" => Ok(Self::Caps),
             _ => Err(miette!("invalid Mod key: {s}")),
         }
     }

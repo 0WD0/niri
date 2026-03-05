@@ -519,6 +519,12 @@ fn key_name(screen_reader: bool, mod_key: ModKey, key: &Key) -> String {
             ModKey::IsoLevel5Shift => {
                 name.push_str("Mod3 + ");
             }
+            ModKey::Mod2 => {
+                name.push_str("Mod2 + ");
+            }
+            ModKey::Caps => {
+                name.push_str("Caps + ");
+            }
         }
     }
 
@@ -543,6 +549,12 @@ fn key_name(screen_reader: bool, mod_key: ModKey, key: &Key) -> String {
         && !(has_comp_mod && mod_key == ModKey::IsoLevel5Shift)
     {
         name.push_str("Mod3 + ");
+    }
+    if key.modifiers.contains(Modifiers::MOD2) && !(has_comp_mod && mod_key == ModKey::Mod2) {
+        name.push_str("Mod2 + ");
+    }
+    if key.modifiers.contains(Modifiers::CAPS) && !(has_comp_mod && mod_key == ModKey::Caps) {
+        name.push_str("Caps + ");
     }
 
     let pretty = match key.trigger {
