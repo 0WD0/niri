@@ -428,11 +428,18 @@ impl State {
             )
         } else if let Some(output) = mapped_output {
             let geo = self.niri.global_space.output_geometry(output).unwrap();
+            // Same logic as in `compute_absolute_location`: virtual absolute devices report
+            // unrotated coordinates, so do not re-apply the output transform for them.
+            let transform = if event.device().is_unrotated_absolute_device() {
+                Transform::Normal
+            } else {
+                output.current_transform()
+            };
             (
                 geo.to_f64(),
                 true,
                 1. / output.current_scale().fractional_scale(),
-                output.current_transform(),
+                transform,
             )
         } else {
             let geo = self.global_bounding_rectangle()?.to_f64();
@@ -4353,10 +4360,21 @@ impl State {
         evt: &impl AbsolutePositionEvent<I>,
         fallback_output: Option<&Output>,
     ) -> Option<Point<f64, Logical>> {
-        let output = evt.device().output(self);
+        let device = evt.device();
+        let output = device.output(self);
         let output = output.filter(|output| self.niri.output_exists(output));
         let output = output.as_ref().or(fallback_output)?;
         let output_geo = self.niri.global_space.output_geometry(output).unwrap();
+
+        // For purely virtual absolute devices (e.g. inputtino/Wolf used by Sunshine), the X/Y
+        // axes do not rotate with the panel, so we must not re-apply the output transform.
+        // Without this, on a `transform=90`/`270` portrait output, the touch input would appear
+        // rotated 90 degrees relative to what the user sees on screen, even though the video
+        // output itself is correct.
+        if device.is_unrotated_absolute_device() {
+            return Some(evt.position_transformed(output_geo.size) + output_geo.loc.to_f64());
+        }
+
         let transform = output.current_transform();
         let size = transform.invert().transform_size(output_geo.size);
         Some(
