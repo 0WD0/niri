@@ -151,8 +151,7 @@ impl TouchOverviewGrab {
         let delta = self.new_location - self.last_location;
         self.last_location = self.new_location;
 
-        let axis_policy = workspace_axis_policy
-            .unwrap_or_else(|| InputAxisPolicy::from_view_axis_vertical(false));
+        let axis_policy = workspace_axis_policy.unwrap_or_default();
         let (view_delta, workspace_delta) =
             axis_policy.split_view_workspace_deltas(-delta.x, -delta.y);
 
