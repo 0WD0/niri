@@ -1837,6 +1837,78 @@ fn vertical_main_axis_set_column_width_changes_tile_height() {
 }
 
 #[test]
+fn interactive_resize_unmaximizes_window() {
+    let mut layout = check_ops([
+        Op::AddOutput(1),
+        Op::AddWindow {
+            params: TestWindowParams::new(1),
+        },
+        Op::MaximizeWindowToEdges { id: Some(1) },
+    ]);
+
+    let (_, win) = layout.windows().next().unwrap();
+    assert!(win.pending_sizing_mode().is_maximized());
+
+    check_ops_on_layout(
+        &mut layout,
+        [
+            Op::InteractiveResizeBegin {
+                window: 1,
+                edges: ResizeEdge::RIGHT,
+            },
+            Op::InteractiveResizeUpdate {
+                window: 1,
+                dx: -100.,
+                dy: 0.,
+            },
+        ],
+    );
+
+    let (_, win) = layout.windows().next().unwrap();
+    assert!(win.pending_sizing_mode().is_normal());
+    assert!(
+        win.expected_size().unwrap().w < 1280,
+        "expected resize to shrink the unmaximized window: {:?}",
+        win.expected_size()
+    );
+}
+
+#[test]
+fn interactive_resize_does_not_unfullscreen_window() {
+    let mut layout = check_ops([
+        Op::AddOutput(1),
+        Op::AddWindow {
+            params: TestWindowParams::new(1),
+        },
+        Op::SetFullscreenWindow {
+            window: 1,
+            is_fullscreen: true,
+        },
+    ]);
+
+    let (_, win) = layout.windows().next().unwrap();
+    assert!(win.pending_sizing_mode().is_fullscreen());
+
+    check_ops_on_layout(
+        &mut layout,
+        [
+            Op::InteractiveResizeBegin {
+                window: 1,
+                edges: ResizeEdge::RIGHT,
+            },
+            Op::InteractiveResizeUpdate {
+                window: 1,
+                dx: -100.,
+                dy: 0.,
+            },
+        ],
+    );
+
+    let (_, win) = layout.windows().next().unwrap();
+    assert!(win.pending_sizing_mode().is_fullscreen());
+}
+
+#[test]
 fn vertical_main_axis_interactive_resize_bottom_changes_tile_height() {
     let mut options = Options::default();
     options.layout.main_axis = MainAxis::Vertical;

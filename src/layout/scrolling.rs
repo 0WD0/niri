@@ -3714,8 +3714,12 @@ impl<W: LayoutElement> ScrollingSpace<W> {
             .find(|col| col.contains(&window))
             .unwrap();
 
-        if !col.pending_sizing_mode().is_normal() {
+        if col.pending_sizing_mode().is_fullscreen() {
             return false;
+        }
+
+        if col.pending_sizing_mode().is_maximized() {
+            col.set_maximized(false);
         }
 
         let tile = col
