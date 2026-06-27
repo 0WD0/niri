@@ -1,22 +1,32 @@
-use ::input as libinput;
-use smithay::backend::input;
+use input as libinput;
+use smithay::backend::input as backend_input;
 use smithay::backend::winit::WinitVirtualDevice;
 use smithay::output::Output;
 
 use crate::niri::State;
 use crate::protocols::virtual_pointer::VirtualPointer;
 
-pub trait NiriInputBackend: input::InputBackend<Device = Self::NiriDevice> {
+const SUNSHINE_OUTPUT_TAG: &str = "[sunshine-output=";
+
+fn sunshine_output_from_device_name(name: &str) -> Option<&str> {
+    let start = name.find(SUNSHINE_OUTPUT_TAG)? + SUNSHINE_OUTPUT_TAG.len();
+    let rest = &name[start..];
+    let end = rest.find(']')?;
+    let output = &rest[..end];
+    (!output.is_empty()).then_some(output)
+}
+
+pub trait NiriInputBackend: backend_input::InputBackend<Device = Self::NiriDevice> {
     type NiriDevice: NiriInputDevice;
 }
-impl<T: input::InputBackend> NiriInputBackend for T
+impl<T: backend_input::InputBackend> NiriInputBackend for T
 where
     Self::Device: NiriInputDevice,
 {
     type NiriDevice = Self::Device;
 }
 
-pub trait NiriInputDevice: input::Device {
+pub trait NiriInputDevice: backend_input::Device {
     // FIXME: this should maybe be per-event, not per-device,
     // but it's not clear that this matters in practice?
     // it might be more obvious once we implement it for libinput
@@ -37,9 +47,11 @@ pub trait NiriInputDevice: input::Device {
 }
 
 impl NiriInputDevice for libinput::Device {
-    fn output(&self, _state: &State) -> Option<Output> {
-        // FIXME: Allow specifying the output per-device?
-        None
+    fn output(&self, state: &State) -> Option<Output> {
+        let name = libinput::Device::name(self);
+        sunshine_output_from_device_name(&name)
+            .and_then(|output_name| state.niri.output_by_name_match(output_name))
+            .cloned()
     }
 
     fn is_unrotated_absolute_device(&self) -> bool {
@@ -55,8 +67,8 @@ impl NiriInputDevice for libinput::Device {
         // `third-party/inputtino/src/uinput/{mouse,touchscreen}.cpp` in Sunshine, and the device
         // definitions in `src/platform/linux/input/inputtino_common.h`) include:
         //   - "Mouse passthrough" / "Mouse passthrough (absolute)"
-        //   - "Touch passthrough"
-        //   - "Pen passthrough"
+        //   - "Touch passthrough" / "Touch passthrough [sunshine-output=DP-2]"
+        //   - "Pen passthrough" / "Pen passthrough [sunshine-output=DP-2]"
         //   - "Wolf mouse virtual device (absolute)"
         //   - "Wolf touch screen virtual device"
         //   - "Wolf pen virtual device"
