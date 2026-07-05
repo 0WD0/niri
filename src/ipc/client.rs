@@ -713,6 +713,7 @@ fn print_window(window: &Window) {
         tile_size,
         window_size,
         tile_pos_in_workspace_view,
+        window_rect_in_output,
         window_offset_in_tile,
     } = window.layout;
 
@@ -736,6 +737,15 @@ fn print_window(window: &Window) {
     }
 
     println!("    Window size: {} x {}", window_size.0, window_size.1);
+    if let Some(rect) = window_rect_in_output {
+        println!(
+            "    Output window rect: {}, {} {} x {}",
+            fmt_rounded(rect.0),
+            fmt_rounded(rect.1),
+            rect.2,
+            rect.3
+        );
+    }
     println!(
         "    Window offset in tile: {} x {}",
         fmt_rounded(window_offset_in_tile.0),
