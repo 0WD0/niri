@@ -344,10 +344,14 @@ impl<W: LayoutElement> FloatingSpace<W> {
             // Round to physical pixels.
             let pos = pos.to_physical_precise_round(scale).to_logical(scale);
 
-            let layout = WindowLayout {
-                tile_pos_in_workspace_view: Some(pos.into()),
-                ..tile.ipc_layout_template()
-            };
+            let mut layout = tile.ipc_layout_template();
+            layout.tile_pos_in_workspace_view = Some(pos.into());
+            layout.window_rect_in_output = Some((
+                pos.x + layout.window_offset_in_tile.0,
+                pos.y + layout.window_offset_in_tile.1,
+                layout.window_size.0,
+                layout.window_size.1,
+            ));
             (tile, layout)
         })
     }

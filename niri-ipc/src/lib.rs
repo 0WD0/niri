@@ -1396,6 +1396,11 @@ pub struct Timestamp {
 /// correspond to what the user visually considers "window". The window properties on the other
 /// hand are mainly useful when you need to know the underlying Wayland window sizes, e.g. for
 /// application debugging.
+///
+/// When a compositor-side overlay needs to align UI to an application surface, prefer
+/// [`Self::window_rect_in_output`] over deriving the rectangle from tile/workspace-view fields.
+/// It is already resolved into the focused output's logical coordinate space and includes layout
+/// offsets such as layer-shell exclusive zones.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "json-schema", derive(schemars::JsonSchema))]
 pub struct WindowLayout {
@@ -1418,6 +1423,12 @@ pub struct WindowLayout {
     ///
     /// This is the same "workspace view" as in gradients' `relative-to` in the niri config.
     pub tile_pos_in_workspace_view: Option<(f64, f64)>,
+    /// Rectangle of the window's visual geometry in the focused output's logical coordinate space.
+    ///
+    /// The position is output-local and the size matches [`Self::window_size`]. Unlike
+    /// [`Self::tile_pos_in_workspace_view`] plus [`Self::window_offset_in_tile`], this field is
+    /// intended for external overlays that need an absolute on-output anchor.
+    pub window_rect_in_output: Option<(f64, f64, i32, i32)>,
     /// Location of the window's visual geometry within its tile.
     ///
     /// This includes things like border sizes. For fullscreened fixed-size windows this includes
