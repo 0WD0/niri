@@ -1401,6 +1401,10 @@ pub struct Timestamp {
 /// [`Self::window_rect_in_output`] over deriving the rectangle from tile/workspace-view fields.
 /// It is already resolved into the focused output's logical coordinate space and includes layout
 /// offsets such as layer-shell exclusive zones.
+///
+/// If the overlay surface is configured in workarea coordinates, subtract
+/// [`Self::working_area_in_output`]'s position from [`Self::window_rect_in_output`] to convert to
+/// overlay-local coordinates.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "json-schema", derive(schemars::JsonSchema))]
 pub struct WindowLayout {
@@ -1429,6 +1433,11 @@ pub struct WindowLayout {
     /// [`Self::tile_pos_in_workspace_view`] plus [`Self::window_offset_in_tile`], this field is
     /// intended for external overlays that need an absolute on-output anchor.
     pub window_rect_in_output: Option<(f64, f64, i32, i32)>,
+    /// Rectangle of the workspace working area in the focused output's logical coordinate space.
+    ///
+    /// This includes layer-shell exclusive zones and niri struts. Layer-shell overlays configured
+    /// by the compositor into the usable area can use this as their local origin.
+    pub working_area_in_output: Option<(f64, f64, f64, f64)>,
     /// Location of the window's visual geometry within its tile.
     ///
     /// This includes things like border sizes. For fullscreened fixed-size windows this includes

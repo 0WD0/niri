@@ -2859,6 +2859,12 @@ impl<W: LayoutElement> ScrollingSpace<W> {
                             layout.window_size.0,
                             layout.window_size.1,
                         ));
+                        layout.working_area_in_output = Some((
+                            self.working_area.loc.x,
+                            self.working_area.loc.y,
+                            self.working_area.size.w,
+                            self.working_area.size.h,
+                        ));
                         // Our indices are 1-based, consistent with the actions.
                         layout.pos_in_scrolling_layout = Some((col_idx + 1, tile_idx + 1));
                         (tile, layout)

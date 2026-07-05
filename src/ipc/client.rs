@@ -714,6 +714,7 @@ fn print_window(window: &Window) {
         window_size,
         tile_pos_in_workspace_view,
         window_rect_in_output,
+        working_area_in_output,
         window_offset_in_tile,
     } = window.layout;
 
@@ -744,6 +745,15 @@ fn print_window(window: &Window) {
             fmt_rounded(rect.1),
             rect.2,
             rect.3
+        );
+    }
+    if let Some(rect) = working_area_in_output {
+        println!(
+            "    Output working area: {}, {} {} x {}",
+            fmt_rounded(rect.0),
+            fmt_rounded(rect.1),
+            fmt_rounded(rect.2),
+            fmt_rounded(rect.3)
         );
     }
     println!(

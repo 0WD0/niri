@@ -906,6 +906,7 @@ impl<W: LayoutElement> Tile<W> {
             window_size: self.window().size().into(),
             tile_pos_in_workspace_view: None,
             window_rect_in_output: None,
+            working_area_in_output: None,
             window_offset_in_tile: self.window_loc().into(),
         }
     }
