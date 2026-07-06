@@ -306,7 +306,13 @@ impl State {
         })
     }
 
-    pub fn focus_window_at(&mut self, output_name: Option<&str>, x: f64, y: f64) {
+    pub fn focus_window_at(
+        &mut self,
+        output_name: Option<&str>,
+        x: f64,
+        y: f64,
+        close_overview: bool,
+    ) {
         let output = output_name
             .and_then(|name| self.niri.output_by_name_match(name))
             .or_else(|| self.niri.layout.active_output())
@@ -331,7 +337,7 @@ impl State {
             return;
         };
 
-        if is_overview_open {
+        if is_overview_open && close_overview {
             let mut workspaces = self.niri.layout.workspaces();
             if let Some(ws_idx) = workspaces.find_map(|(_, ws_idx, ws)| {
                 ws.windows().any(|w| w.window == window).then_some(ws_idx)
@@ -1039,8 +1045,13 @@ impl State {
                     self.focus_window(&window);
                 }
             }
-            Action::FocusWindowAt { output, x, y } => {
-                self.focus_window_at(output.as_deref(), x, y);
+            Action::FocusWindowAt {
+                output,
+                x,
+                y,
+                close_overview,
+            } => {
+                self.focus_window_at(output.as_deref(), x, y, close_overview);
             }
             Action::FocusWindowInColumn(index) => {
                 self.niri.layout.focus_window_in_column(index);

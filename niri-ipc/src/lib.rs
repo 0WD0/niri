@@ -327,8 +327,7 @@ pub enum Action {
     /// Focus the window under an output-local point.
     ///
     /// This uses the compositor's own hit-testing, so it works both in the normal layout and in
-    /// the Overview. When the Overview is open, focusing a window will also close the Overview to
-    /// that window's workspace.
+    /// the Overview. Set close_overview to also close the Overview to the window's workspace.
     FocusWindowAt {
         /// Output name. If omitted, uses the active output.
         #[cfg_attr(feature = "clap", arg(long))]
@@ -339,6 +338,9 @@ pub enum Action {
         /// Y coordinate in output-local logical pixels.
         #[cfg_attr(feature = "clap", arg(long))]
         y: f64,
+        /// Whether to close the Overview to the window's workspace after focusing.
+        #[cfg_attr(feature = "clap", arg(long))]
+        close_overview: bool,
     },
     /// Focus a window in the focused column by index.
     FocusWindowInColumn {

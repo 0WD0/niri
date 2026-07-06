@@ -164,6 +164,7 @@ pub enum Action {
         output: Option<String>,
         x: f64,
         y: f64,
+        close_overview: bool,
     },
     FocusWindowInColumn(#[knuffel(argument)] u8),
     FocusWindowPrevious,
@@ -478,9 +479,17 @@ impl From<niri_ipc::Action> for Action {
                 Self::ToggleWindowedFullscreenById(id)
             }
             niri_ipc::Action::FocusWindow { id } => Self::FocusWindow(id),
-            niri_ipc::Action::FocusWindowAt { output, x, y } => {
-                Self::FocusWindowAt { output, x, y }
-            }
+            niri_ipc::Action::FocusWindowAt {
+                output,
+                x,
+                y,
+                close_overview,
+            } => Self::FocusWindowAt {
+                output,
+                x,
+                y,
+                close_overview,
+            },
             niri_ipc::Action::FocusWindowInColumn { index } => Self::FocusWindowInColumn(index),
             niri_ipc::Action::FocusWindowPrevious {} => Self::FocusWindowPrevious,
             niri_ipc::Action::FocusColumnLeft {} => Self::FocusColumnLeft,
