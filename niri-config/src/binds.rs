@@ -369,6 +369,18 @@ pub enum Action {
     },
     #[knuffel(skip)]
     InteractiveMoveEnd,
+    #[knuffel(skip)]
+    InteractiveResizeBegin {
+        id: Option<u64>,
+        edges: String,
+    },
+    #[knuffel(skip)]
+    InteractiveResizeUpdate {
+        dx: f64,
+        dy: f64,
+    },
+    #[knuffel(skip)]
+    InteractiveResizeEnd,
     ToggleWindowRuleOpacity,
     #[knuffel(skip)]
     ToggleWindowRuleOpacityById(u64),
@@ -718,6 +730,13 @@ impl From<niri_ipc::Action> for Action {
                 dy,
             },
             niri_ipc::Action::InteractiveMoveEnd {} => Self::InteractiveMoveEnd,
+            niri_ipc::Action::InteractiveResizeBegin { id, edges } => {
+                Self::InteractiveResizeBegin { id, edges }
+            }
+            niri_ipc::Action::InteractiveResizeUpdate { dx, dy } => {
+                Self::InteractiveResizeUpdate { dx, dy }
+            }
+            niri_ipc::Action::InteractiveResizeEnd {} => Self::InteractiveResizeEnd,
             niri_ipc::Action::ToggleWindowRuleOpacity { id: None } => Self::ToggleWindowRuleOpacity,
             niri_ipc::Action::ToggleWindowRuleOpacity { id: Some(id) } => {
                 Self::ToggleWindowRuleOpacityById(id)

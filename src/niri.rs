@@ -703,6 +703,7 @@ pub struct State {
     pub backend: Backend,
     pub niri: Niri,
     pub ipc_interactive_move: Option<Window>,
+    pub ipc_interactive_resize: Option<Window>,
 }
 
 impl State {
@@ -750,6 +751,7 @@ impl State {
             backend,
             niri,
             ipc_interactive_move: None,
+            ipc_interactive_resize: None,
         };
 
         // Load the xkb_file config option if set by the user.

@@ -71,6 +71,20 @@ pub mod spatial_movement_grab;
 pub mod swipe_tracker;
 pub mod touch_overview_grab;
 
+fn parse_ipc_resize_edges(value: &str) -> Option<ResizeEdge> {
+    match value.replace('_', "-").to_ascii_lowercase().as_str() {
+        "left" => Some(ResizeEdge::LEFT),
+        "right" => Some(ResizeEdge::RIGHT),
+        "top" | "up" => Some(ResizeEdge::TOP),
+        "bottom" | "down" => Some(ResizeEdge::BOTTOM),
+        "top-left" | "left-top" => Some(ResizeEdge::TOP_LEFT),
+        "top-right" | "right-top" => Some(ResizeEdge::TOP_RIGHT),
+        "bottom-left" | "left-bottom" => Some(ResizeEdge::BOTTOM_LEFT),
+        "bottom-right" | "right-bottom" => Some(ResizeEdge::BOTTOM_RIGHT),
+        _ => None,
+    }
+}
+
 use backend_ext::{NiriInputBackend as InputBackend, NiriInputDevice as _};
 
 pub const DOUBLE_CLICK_TIME: Duration = Duration::from_millis(400);
@@ -2410,6 +2424,59 @@ impl State {
                     return;
                 };
                 self.niri.layout.interactive_move_end(&window);
+                self.niri.queue_redraw_all();
+            }
+            Action::InteractiveResizeBegin { id, edges } => {
+                let Some(edges) = parse_ipc_resize_edges(&edges) else {
+                    return;
+                };
+                let window = if let Some(id) = id {
+                    self.niri
+                        .layout
+                        .windows()
+                        .find(|(_, mapped)| mapped.id().get() == id)
+                        .map(|(_, mapped)| mapped.window.clone())
+                } else {
+                    self.niri
+                        .layout
+                        .active_workspace()
+                        .and_then(|ws| ws.active_window())
+                        .map(|mapped| mapped.window.clone())
+                };
+                let Some(window) = window else {
+                    return;
+                };
+
+                self.niri.layout.activate_window(&window);
+                if self
+                    .niri
+                    .layout
+                    .interactive_resize_begin(window.clone(), edges)
+                {
+                    self.ipc_interactive_resize = Some(window);
+                    self.niri.queue_redraw_all();
+                }
+            }
+            Action::InteractiveResizeUpdate { dx, dy } => {
+                let Some(window) = self.ipc_interactive_resize.clone() else {
+                    return;
+                };
+
+                let ongoing = self
+                    .niri
+                    .layout
+                    .interactive_resize_update(&window, Point::from((dx, dy)));
+                if ongoing {
+                    self.niri.queue_redraw_all();
+                } else {
+                    self.ipc_interactive_resize = None;
+                }
+            }
+            Action::InteractiveResizeEnd => {
+                let Some(window) = self.ipc_interactive_resize.take() else {
+                    return;
+                };
+                self.niri.layout.interactive_resize_end(&window);
                 self.niri.queue_redraw_all();
             }
             Action::ToggleWindowRuleOpacity => {

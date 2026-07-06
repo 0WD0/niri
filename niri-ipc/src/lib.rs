@@ -898,6 +898,30 @@ pub enum Action {
     },
     /// End an interactive window move/rearrange operation.
     InteractiveMoveEnd {},
+    /// Begin an interactive window resize operation.
+    ///
+    /// The `edges` string is one of: `left`, `right`, `top`, `bottom`,
+    /// `top-left`, `top-right`, `bottom-left`, `bottom-right`.
+    InteractiveResizeBegin {
+        /// Id of the window to resize.
+        ///
+        /// If `None`, uses the focused window.
+        #[cfg_attr(feature = "clap", arg(long))]
+        id: Option<u64>,
+
+        /// Window edge or corner to resize.
+        edges: String,
+    },
+    /// Update an interactive window resize operation.
+    InteractiveResizeUpdate {
+        /// X delta from the resize start, in logical pixels.
+        dx: f64,
+
+        /// Y delta from the resize start, in logical pixels.
+        dy: f64,
+    },
+    /// End an interactive window resize operation.
+    InteractiveResizeEnd {},
     /// Toggle the opacity of a window.
     #[cfg_attr(
         feature = "clap",
