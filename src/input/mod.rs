@@ -306,6 +306,45 @@ impl State {
         })
     }
 
+    pub fn focus_window_at(&mut self, output_name: Option<&str>, x: f64, y: f64) {
+        let output = output_name
+            .and_then(|name| self.niri.output_by_name_match(name))
+            .or_else(|| self.niri.layout.active_output())
+            .cloned();
+        let Some(output) = output else {
+            return;
+        };
+
+        let Some(output_geo) = self.niri.global_space.output_geometry(&output) else {
+            return;
+        };
+        let pos = output_geo.loc.to_f64() + Point::from((x, y));
+
+        let is_overview_open = self.niri.layout.is_overview_open();
+        let window = self
+            .niri
+            .window_under(pos)
+            .map(|mapped| mapped.window.clone());
+        let Some(window) = window else {
+            self.niri.layout.focus_output(&output);
+            self.niri.queue_redraw_all();
+            return;
+        };
+
+        if is_overview_open {
+            let mut workspaces = self.niri.layout.workspaces();
+            if let Some(ws_idx) = workspaces.find_map(|(_, ws_idx, ws)| {
+                ws.windows().any(|w| w.window == window).then_some(ws_idx)
+            }) {
+                drop(workspaces);
+                self.niri.layout.focus_output(&output);
+                self.niri.layout.toggle_overview_to_workspace(ws_idx);
+            }
+        }
+
+        self.focus_window(&window);
+    }
+
     fn view_axis_policy_under_cursor_or_active_workspace(&self) -> Option<InputAxisPolicy> {
         self.niri
             .workspace_under_cursor(true)
@@ -999,6 +1038,9 @@ impl State {
                 if let Some(window) = window {
                     self.focus_window(&window);
                 }
+            }
+            Action::FocusWindowAt { output, x, y } => {
+                self.focus_window_at(output.as_deref(), x, y);
             }
             Action::FocusWindowInColumn(index) => {
                 self.niri.layout.focus_window_in_column(index);

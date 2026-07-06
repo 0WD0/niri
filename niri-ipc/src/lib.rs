@@ -324,6 +324,22 @@ pub enum Action {
         #[cfg_attr(feature = "clap", arg(long))]
         id: u64,
     },
+    /// Focus the window under an output-local point.
+    ///
+    /// This uses the compositor's own hit-testing, so it works both in the normal layout and in
+    /// the Overview. When the Overview is open, focusing a window will also close the Overview to
+    /// that window's workspace.
+    FocusWindowAt {
+        /// Output name. If omitted, uses the active output.
+        #[cfg_attr(feature = "clap", arg(long))]
+        output: Option<String>,
+        /// X coordinate in output-local logical pixels.
+        #[cfg_attr(feature = "clap", arg(long))]
+        x: f64,
+        /// Y coordinate in output-local logical pixels.
+        #[cfg_attr(feature = "clap", arg(long))]
+        y: f64,
+    },
     /// Focus a window in the focused column by index.
     FocusWindowInColumn {
         /// Index of the window in the column.
