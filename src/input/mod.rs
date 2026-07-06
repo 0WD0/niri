@@ -2347,6 +2347,71 @@ impl State {
                 // FIXME: granular
                 self.niri.queue_redraw_all();
             }
+            Action::InteractiveMoveBegin { id, output, x, y } => {
+                let window = if let Some(id) = id {
+                    self.niri
+                        .layout
+                        .windows()
+                        .find(|(_, mapped)| mapped.id().get() == id)
+                        .map(|(_, mapped)| mapped.window.clone())
+                } else {
+                    self.niri
+                        .layout
+                        .active_workspace()
+                        .and_then(|ws| ws.active_window())
+                        .map(|mapped| mapped.window.clone())
+                };
+                let Some(window) = window else {
+                    return;
+                };
+
+                let Some(output) = self.niri.output_by_name_match(&output).cloned() else {
+                    return;
+                };
+
+                let start = Point::from((x, y));
+                if self
+                    .niri
+                    .layout
+                    .interactive_move_begin(window.clone(), &output, start)
+                {
+                    self.ipc_interactive_move = Some(window);
+                    self.niri.queue_redraw_all();
+                }
+            }
+            Action::InteractiveMoveUpdate {
+                output,
+                x,
+                y,
+                dx,
+                dy,
+            } => {
+                let Some(window) = self.ipc_interactive_move.clone() else {
+                    return;
+                };
+                let Some(output) = self.niri.output_by_name_match(&output).cloned() else {
+                    return;
+                };
+
+                let ongoing = self.niri.layout.interactive_move_update(
+                    &window,
+                    Point::from((dx, dy)),
+                    output,
+                    Point::from((x, y)),
+                );
+                if ongoing {
+                    self.niri.queue_redraw_all();
+                } else {
+                    self.ipc_interactive_move = None;
+                }
+            }
+            Action::InteractiveMoveEnd => {
+                let Some(window) = self.ipc_interactive_move.take() else {
+                    return;
+                };
+                self.niri.layout.interactive_move_end(&window);
+                self.niri.queue_redraw_all();
+            }
             Action::ToggleWindowRuleOpacity => {
                 let active_window = self
                     .niri

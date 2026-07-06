@@ -860,6 +860,44 @@ pub enum Action {
         )]
         y: PositionChange,
     },
+    /// Begin an interactive window move/rearrange operation.
+    ///
+    /// This mirrors compositor-side pointer/touch window dragging and can rearrange tiled windows.
+    InteractiveMoveBegin {
+        /// Id of the window to move.
+        ///
+        /// If `None`, uses the focused window.
+        #[cfg_attr(feature = "clap", arg(long))]
+        id: Option<u64>,
+
+        /// Output name containing the pointer/touch position.
+        output: String,
+
+        /// Pointer/touch X coordinate within the output, in logical pixels.
+        x: f64,
+
+        /// Pointer/touch Y coordinate within the output, in logical pixels.
+        y: f64,
+    },
+    /// Update an interactive window move/rearrange operation.
+    InteractiveMoveUpdate {
+        /// Output name containing the pointer/touch position.
+        output: String,
+
+        /// Pointer/touch X coordinate within the output, in logical pixels.
+        x: f64,
+
+        /// Pointer/touch Y coordinate within the output, in logical pixels.
+        y: f64,
+
+        /// X delta since the previous update, in logical pixels.
+        dx: f64,
+
+        /// Y delta since the previous update, in logical pixels.
+        dy: f64,
+    },
+    /// End an interactive window move/rearrange operation.
+    InteractiveMoveEnd {},
     /// Toggle the opacity of a window.
     #[cfg_attr(
         feature = "clap",
