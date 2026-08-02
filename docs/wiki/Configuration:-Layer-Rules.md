@@ -34,6 +34,7 @@ layer-rule {
 
     geometry-corner-radius 12
     place-within-backdrop true
+    reserve-space-from-fullscreen true
     baba-is-float true
 
     background-effect {
@@ -208,6 +209,21 @@ layer-rule {
     match namespace="^wallpaper$"
 
     place-within-backdrop true
+}
+```
+
+#### `reserve-space-from-fullscreen`
+
+Make the positive exclusive zone of this layer surface reserve space from fullscreen windows too. By default, fullscreen windows continue to use the complete output and ignore layer-shell exclusive zones.
+
+This is intended for transient input panels and similar surfaces that would otherwise cover the content being edited. It has no effect when the surface has no positive exclusive zone. If multiple exclusive surfaces are stacked at the same edge, niri reserves through the matched surface so that it cannot overlap the fullscreen content.
+
+```kdl
+// Keep fullscreen content above a docked on-screen keyboard.
+layer-rule {
+    match namespace="^touchdeck-keyboard$"
+
+    reserve-space-from-fullscreen true
 }
 ```
 

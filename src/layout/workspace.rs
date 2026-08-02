@@ -1,5 +1,6 @@
 use std::cmp::max;
 use std::rc::Rc;
+use std::sync::Mutex;
 use std::time::Duration;
 
 use niri_config::utils::MergeWith as _;
@@ -90,6 +91,12 @@ pub struct Workspace<W: LayoutElement> {
     /// This is similar to view size, but takes into account things like layer shell exclusive
     /// zones.
     working_area: Rectangle<f64, Logical>,
+
+    /// Area used to size and position fullscreen windows.
+    ///
+    /// Normally this is the complete output. Layer surfaces explicitly opted into fullscreen
+    /// reservation can inset it without changing fullscreen state.
+    fullscreen_area: Rectangle<f64, Logical>,
 
     /// This workspace's shadow in the overview.
     shadow: Shadow,
@@ -236,10 +243,12 @@ impl<W: LayoutElement> Workspace<W> {
 
         let view_size = output_size(&output);
         let working_area = compute_working_area(&output);
+        let fullscreen_area = compute_fullscreen_working_area(&output);
 
         let scrolling = ScrollingSpace::new(
             view_size,
             working_area,
+            fullscreen_area,
             scale.fractional_scale(),
             clock.clone(),
             options.clone(),
@@ -265,6 +274,7 @@ impl<W: LayoutElement> Workspace<W> {
             transform: output.current_transform(),
             view_size,
             working_area,
+            fullscreen_area,
             shadow: Shadow::new(shadow_config),
             background_buffer: SolidColorBuffer::new(view_size, options.layout.background_color),
             output: Some(output),
@@ -299,11 +309,13 @@ impl<W: LayoutElement> Workspace<W> {
         );
 
         let view_size = Size::from((1280., 720.));
-        let working_area = Rectangle::from_size(Size::from((1280., 720.)));
+        let working_area = Rectangle::from_size(view_size);
+        let fullscreen_area = Rectangle::from_size(view_size);
 
         let scrolling = ScrollingSpace::new(
             view_size,
             working_area,
+            fullscreen_area,
             scale.fractional_scale(),
             clock.clone(),
             options.clone(),
@@ -330,6 +342,7 @@ impl<W: LayoutElement> Workspace<W> {
             original_output,
             view_size,
             working_area,
+            fullscreen_area,
             shadow: Shadow::new(shadow_config),
             background_buffer: SolidColorBuffer::new(view_size, options.layout.background_color),
             clock,
@@ -419,6 +432,7 @@ impl<W: LayoutElement> Workspace<W> {
         self.scrolling.update_config(
             self.view_size,
             self.working_area,
+            self.fullscreen_area,
             self.scale.fractional_scale(),
             options.clone(),
         );
@@ -544,7 +558,8 @@ impl<W: LayoutElement> Workspace<W> {
         let transform = output.current_transform();
         let view_size = output_size(output);
         let working_area = compute_working_area(output);
-        self.set_view_size(scale, transform, view_size, working_area);
+        let fullscreen_area = compute_fullscreen_working_area(output);
+        self.set_view_size(scale, transform, view_size, working_area, fullscreen_area);
     }
 
     fn set_view_size(
@@ -553,11 +568,16 @@ impl<W: LayoutElement> Workspace<W> {
         transform: Transform,
         size: Size<f64, Logical>,
         working_area: Rectangle<f64, Logical>,
+        fullscreen_area: Rectangle<f64, Logical>,
     ) {
         let scale_transform_changed = self.transform != transform
             || self.scale.integer_scale() != scale.integer_scale()
             || self.scale.fractional_scale() != scale.fractional_scale();
-        if !scale_transform_changed && self.view_size == size && self.working_area == working_area {
+        if !scale_transform_changed
+            && self.view_size == size
+            && self.working_area == working_area
+            && self.fullscreen_area == fullscreen_area
+        {
             return;
         }
 
@@ -567,6 +587,7 @@ impl<W: LayoutElement> Workspace<W> {
         self.transform = transform;
         self.view_size = size;
         self.working_area = working_area;
+        self.fullscreen_area = fullscreen_area;
 
         if fractional_scale_changed {
             // Options need to be recomputed for the new scale.
@@ -576,6 +597,7 @@ impl<W: LayoutElement> Workspace<W> {
             self.scrolling.update_config(
                 size,
                 working_area,
+                fullscreen_area,
                 scale.fractional_scale(),
                 self.options.clone(),
             );
@@ -877,7 +899,7 @@ impl<W: LayoutElement> Workspace<W> {
         });
         toplevel.with_pending_state(|state| {
             if state.states.contains(xdg_toplevel::State::Fullscreen) {
-                state.size = Some(self.view_size.to_i32_round());
+                state.size = Some(self.fullscreen_area.size.to_i32_round());
             } else if state.states.contains(xdg_toplevel::State::Maximized) {
                 state.size = Some(self.working_area.size.to_i32_round());
             } else {
@@ -2099,6 +2121,24 @@ impl<W: LayoutElement> Workspace<W> {
             }
         }
     }
+}
+
+#[derive(Debug)]
+struct FullscreenWorkingArea(Mutex<Rectangle<i32, Logical>>);
+
+pub(crate) fn set_fullscreen_working_area(output: &Output, area: Rectangle<i32, Logical>) {
+    let state = output
+        .user_data()
+        .get_or_insert(|| FullscreenWorkingArea(Mutex::new(area)));
+    *state.0.lock().unwrap() = area;
+}
+
+fn compute_fullscreen_working_area(output: &Output) -> Rectangle<f64, Logical> {
+    output
+        .user_data()
+        .get::<FullscreenWorkingArea>()
+        .map(|state| state.0.lock().unwrap().to_f64())
+        .unwrap_or_else(|| Rectangle::from_size(output_size(output)))
 }
 
 pub(super) fn compute_working_area(output: &Output) -> Rectangle<f64, Logical> {

@@ -1007,9 +1007,14 @@ impl<W: LayoutElement> Tile<W> {
         );
     }
 
-    pub fn request_fullscreen(&mut self, animate: bool, transaction: Option<Transaction>) {
+    pub fn request_fullscreen(
+        &mut self,
+        size: Size<f64, Logical>,
+        animate: bool,
+        transaction: Option<Transaction>,
+    ) {
         self.window.request_size(
-            self.view_size.to_i32_round(),
+            size.to_i32_round(),
             SizingMode::Fullscreen,
             animate,
             transaction,

@@ -16,6 +16,35 @@ fn fullscreen() {
 }
 
 #[test]
+fn fullscreen_resizes_to_explicit_fullscreen_working_area() {
+    let mut layout = check_ops([
+        Op::AddOutput(1),
+        Op::AddWindow {
+            params: TestWindowParams::new(1),
+        },
+        Op::FullscreenWindow(1),
+    ]);
+    let output = layout.outputs().next().unwrap().clone();
+    set_fullscreen_working_area(&output, Rectangle::new((0, 100).into(), (1280, 420).into()));
+    layout.update_output_size(&output);
+
+    let window = layout
+        .windows()
+        .find_map(|(_, window)| (window.id() == &1).then_some(window))
+        .unwrap();
+    assert_eq!(window.requested_size(), Some(Size::from((1280, 420))));
+
+    check_ops_on_layout(&mut layout, [Op::Communicate(1), Op::CompleteAnimations]);
+    let (_, position, _) = layout
+        .active_workspace()
+        .unwrap()
+        .tiles_with_render_positions()
+        .find(|(tile, _, _)| tile.window().id() == &1)
+        .unwrap();
+    assert_eq!(position, Point::from((0.0, 100.0)));
+}
+
+#[test]
 fn unfullscreen_window_in_column() {
     let ops = [
         Op::AddOutput(1),

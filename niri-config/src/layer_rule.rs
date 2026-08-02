@@ -20,6 +20,8 @@ pub struct LayerRule {
     #[knuffel(child, unwrap(argument))]
     pub place_within_backdrop: Option<bool>,
     #[knuffel(child, unwrap(argument))]
+    pub reserve_space_from_fullscreen: Option<bool>,
+    #[knuffel(child, unwrap(argument))]
     pub baba_is_float: Option<bool>,
     #[knuffel(child, default)]
     pub background_effect: BackgroundEffectRule,

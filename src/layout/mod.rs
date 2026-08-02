@@ -55,6 +55,7 @@ use workspace::{WorkspaceAddWindowTarget, WorkspaceId};
 use self::axis::AxisMap;
 pub use self::monitor::MonitorRenderElement;
 use self::monitor::{Monitor, WorkspaceSwitch};
+pub(crate) use self::workspace::set_fullscreen_working_area;
 use self::workspace::{OutputId, Workspace};
 use crate::animation::{Animation, Clock};
 use crate::input::swipe_tracker::SwipeTracker;

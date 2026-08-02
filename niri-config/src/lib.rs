@@ -936,6 +936,7 @@ mod tests {
             layer-rule {
                 match namespace="^notifications$"
                 block-out-from "screencast"
+                reserve-space-from-fullscreen true
             }
 
             binds {
@@ -1962,6 +1963,9 @@ mod tests {
                     },
                     geometry_corner_radius: None,
                     place_within_backdrop: None,
+                    reserve_space_from_fullscreen: Some(
+                        true,
+                    ),
                     baba_is_float: None,
                     background_effect: BackgroundEffectRule {
                         xray: None,

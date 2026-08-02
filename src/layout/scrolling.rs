@@ -96,6 +96,9 @@ pub struct ScrollingSpace<W: LayoutElement> {
     /// the layer-shell top layer (which renders on top of popups).
     parent_area: Rectangle<f64, Logical>,
 
+    /// Area used by fullscreen columns. Usually the complete view.
+    fullscreen_area: Rectangle<f64, Logical>,
+
     /// Scale of the output the space is on (and rounds its sizes to).
     scale: f64,
 
@@ -240,6 +243,9 @@ pub struct Column<W: LayoutElement> {
     /// Used for maximize-to-edges.
     parent_area: Rectangle<f64, Logical>,
 
+    /// Area used to size and position fullscreen tiles.
+    fullscreen_area: Rectangle<f64, Logical>,
+
     /// Scale of the output the column is on (and rounds its sizes to).
     scale: f64,
 
@@ -334,6 +340,7 @@ impl<W: LayoutElement> ScrollingSpace<W> {
     pub fn new(
         view_size: Size<f64, Logical>,
         parent_area: Rectangle<f64, Logical>,
+        fullscreen_area: Rectangle<f64, Logical>,
         scale: f64,
         clock: Clock,
         options: Rc<Options>,
@@ -341,6 +348,7 @@ impl<W: LayoutElement> ScrollingSpace<W> {
         let axis = AxisMap::new(options.layout.main_axis);
         let view_size = axis.size_in(view_size);
         let parent_area = axis.rect_in(parent_area);
+        let fullscreen_area = axis.rect_in(fullscreen_area);
         let working_area = compute_working_area(parent_area, scale, options.layout.struts);
 
         Self {
@@ -355,6 +363,7 @@ impl<W: LayoutElement> ScrollingSpace<W> {
             view_size,
             working_area,
             parent_area,
+            fullscreen_area,
             scale,
             clock,
             options,
@@ -365,22 +374,32 @@ impl<W: LayoutElement> ScrollingSpace<W> {
         &mut self,
         view_size: Size<f64, Logical>,
         parent_area: Rectangle<f64, Logical>,
+        fullscreen_area: Rectangle<f64, Logical>,
         scale: f64,
         options: Rc<Options>,
     ) {
         let axis = AxisMap::new(options.layout.main_axis);
         let view_size = axis.size_in(view_size);
         let parent_area = axis.rect_in(parent_area);
+        let fullscreen_area = axis.rect_in(fullscreen_area);
         let working_area = compute_working_area(parent_area, scale, options.layout.struts);
 
         for (column, data) in zip(&mut self.columns, &mut self.data) {
-            column.update_config(view_size, working_area, parent_area, scale, options.clone());
+            column.update_config(
+                view_size,
+                working_area,
+                parent_area,
+                fullscreen_area,
+                scale,
+                options.clone(),
+            );
             data.update(column);
         }
 
         self.view_size = view_size;
         self.working_area = working_area;
         self.parent_area = parent_area;
+        self.fullscreen_area = fullscreen_area;
         self.scale = scale;
         self.options = options;
 
@@ -1262,6 +1281,7 @@ impl<W: LayoutElement> ScrollingSpace<W> {
             self.view_size,
             self.working_area,
             self.parent_area,
+            self.fullscreen_area,
             self.scale,
             width,
             is_full_width,
@@ -1365,6 +1385,7 @@ impl<W: LayoutElement> ScrollingSpace<W> {
             self.view_size,
             self.working_area,
             self.parent_area,
+            self.fullscreen_area,
             self.scale,
             self.options.clone(),
         );
@@ -4136,6 +4157,7 @@ impl<W: LayoutElement> Column<W> {
         view_size: Size<f64, Logical>,
         working_area: Rectangle<f64, Logical>,
         parent_area: Rectangle<f64, Logical>,
+        fullscreen_area: Rectangle<f64, Logical>,
         scale: f64,
         width: ColumnWidth,
         is_full_width: bool,
@@ -4180,6 +4202,7 @@ impl<W: LayoutElement> Column<W> {
             view_size,
             working_area,
             parent_area,
+            fullscreen_area,
             scale,
             clock: tile.clock.clone(),
             options,
@@ -4219,6 +4242,7 @@ impl<W: LayoutElement> Column<W> {
         view_size: Size<f64, Logical>,
         working_area: Rectangle<f64, Logical>,
         parent_area: Rectangle<f64, Logical>,
+        fullscreen_area: Rectangle<f64, Logical>,
         scale: f64,
         options: Rc<Options>,
     ) {
@@ -4230,6 +4254,7 @@ impl<W: LayoutElement> Column<W> {
         if self.view_size != view_size
             || self.working_area != working_area
             || self.parent_area != parent_area
+            || self.fullscreen_area != fullscreen_area
         {
             update_sizes = true;
         }
@@ -4273,6 +4298,7 @@ impl<W: LayoutElement> Column<W> {
         self.view_size = view_size;
         self.working_area = working_area;
         self.parent_area = parent_area;
+        self.fullscreen_area = fullscreen_area;
         self.scale = scale;
         self.options = options;
 
@@ -4762,7 +4788,11 @@ impl<W: LayoutElement> Column<W> {
                 };
 
                 if matches!(sizing_mode, SizingMode::Fullscreen) {
-                    tile.request_fullscreen(animate, transaction);
+                    tile.request_fullscreen(
+                        axis.size_out(self.fullscreen_area.size),
+                        animate,
+                        transaction,
+                    );
                 } else {
                     tile.request_maximized(
                         axis.size_out(self.parent_area.size),
@@ -5532,7 +5562,7 @@ impl<W: LayoutElement> Column<W> {
                 origin += cross_space_vec(self.parent_area.loc.y);
                 return origin;
             }
-            SizingMode::Fullscreen => return origin,
+            SizingMode::Fullscreen => return self.fullscreen_area.loc,
         }
 
         origin += cross_space_vec(self.working_area.loc.y + self.options.layout.gaps);

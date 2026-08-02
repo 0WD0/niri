@@ -25,6 +25,9 @@ pub struct ResolvedLayerRules {
     /// Whether to place this layer surface within the overview backdrop.
     pub place_within_backdrop: bool,
 
+    /// Whether this surface's exclusive zone also reserves space from fullscreen windows.
+    pub reserve_space_from_fullscreen: bool,
+
     /// Whether to bob this window up and down.
     pub baba_is_float: bool,
 
@@ -71,6 +74,9 @@ impl ResolvedLayerRules {
             }
             if let Some(x) = rule.place_within_backdrop {
                 resolved.place_within_backdrop = x;
+            }
+            if let Some(x) = rule.reserve_space_from_fullscreen {
+                resolved.reserve_space_from_fullscreen = x;
             }
             if let Some(x) = rule.baba_is_float {
                 resolved.baba_is_float = x;

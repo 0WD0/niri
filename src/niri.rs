@@ -99,7 +99,9 @@ use smithay::wayland::selection::primary_selection::PrimarySelectionState;
 use smithay::wayland::selection::wlr_data_control::DataControlState as WlrDataControlState;
 use smithay::wayland::session_lock::{LockSurface, SessionLockManagerState, SessionLocker};
 use smithay::wayland::shell::kde::decoration::KdeDecorationState;
-use smithay::wayland::shell::wlr_layer::{self, Layer, WlrLayerShellState};
+use smithay::wayland::shell::wlr_layer::{
+    self, Anchor, ExclusiveZone, Layer, LayerSurfaceCachedState, WlrLayerShellState,
+};
 use smithay::wayland::shell::xdg::decoration::XdgDecorationState;
 use smithay::wayland::shell::xdg::XdgShellState;
 use smithay::wayland::shm::ShmState;
@@ -143,7 +145,8 @@ use crate::layer::MappedLayer;
 use crate::layout::tile::TileRenderElement;
 use crate::layout::workspace::{Workspace, WorkspaceId};
 use crate::layout::{
-    HitType, Layout, LayoutElement as _, LayoutElementRenderElement, MonitorRenderElement,
+    set_fullscreen_working_area, HitType, Layout, LayoutElement as _, LayoutElementRenderElement,
+    MonitorRenderElement,
 };
 use crate::niri_render_elements;
 use crate::protocols::ext_workspace::{self, ExtWorkspaceManagerState};
@@ -2260,6 +2263,163 @@ impl State {
     }
 }
 
+fn compute_fullscreen_working_area(
+    output_size: Size<i32, Logical>,
+    layers: impl IntoIterator<Item = (LayerSurfaceCachedState, bool)>,
+) -> Rectangle<i32, Logical> {
+    let output_rect = Rectangle::from_size(output_size);
+    let mut arranged_area = output_rect;
+    let mut fullscreen_area = output_rect;
+
+    for (state, reserves_fullscreen) in layers {
+        let Some(edge) = apply_layer_exclusive_zone(&mut arranged_area, state) else {
+            continue;
+        };
+        if reserves_fullscreen {
+            extend_reservation_to_edge(&mut fullscreen_area, arranged_area, edge);
+        }
+    }
+
+    fullscreen_area
+}
+
+fn apply_layer_exclusive_zone(
+    area: &mut Rectangle<i32, Logical>,
+    state: LayerSurfaceCachedState,
+) -> Option<Anchor> {
+    let ExclusiveZone::Exclusive(amount) = state.exclusive_zone else {
+        return None;
+    };
+    let edge = state
+        .exclusive_edge
+        .or_else(|| implied_exclusive_edge(state.anchor))?;
+    let amount = i32::try_from(amount).unwrap_or(i32::MAX);
+
+    match edge {
+        Anchor::TOP => {
+            let inset = amount.saturating_add(state.margin.top);
+            area.loc.y = area.loc.y.saturating_add(inset);
+            area.size.h = area.size.h.saturating_sub(inset);
+        }
+        Anchor::BOTTOM => {
+            let inset = amount.saturating_add(state.margin.bottom);
+            area.size.h = area.size.h.saturating_sub(inset);
+        }
+        Anchor::LEFT => {
+            let inset = amount.saturating_add(state.margin.left);
+            area.loc.x = area.loc.x.saturating_add(inset);
+            area.size.w = area.size.w.saturating_sub(inset);
+        }
+        Anchor::RIGHT => {
+            let inset = amount.saturating_add(state.margin.right);
+            area.size.w = area.size.w.saturating_sub(inset);
+        }
+        _ => unreachable!("exclusive edge must contain exactly one edge"),
+    }
+
+    area.size.w = area.size.w.max(0);
+    area.size.h = area.size.h.max(0);
+    Some(edge)
+}
+
+fn implied_exclusive_edge(anchor: Anchor) -> Option<Anchor> {
+    match anchor.bits().count_ones() {
+        0 | 2 | 4 => None,
+        1 => Some(anchor),
+        3 => Some(match anchor.complement() {
+            Anchor::TOP => Anchor::BOTTOM,
+            Anchor::BOTTOM => Anchor::TOP,
+            Anchor::LEFT => Anchor::RIGHT,
+            Anchor::RIGHT => Anchor::LEFT,
+            _ => unreachable!(),
+        }),
+        _ => unreachable!(),
+    }
+}
+
+fn extend_reservation_to_edge(
+    fullscreen_area: &mut Rectangle<i32, Logical>,
+    arranged_area: Rectangle<i32, Logical>,
+    edge: Anchor,
+) {
+    let right = fullscreen_area.loc.x + fullscreen_area.size.w;
+    let bottom = fullscreen_area.loc.y + fullscreen_area.size.h;
+    let arranged_right = arranged_area.loc.x + arranged_area.size.w;
+    let arranged_bottom = arranged_area.loc.y + arranged_area.size.h;
+
+    match edge {
+        Anchor::TOP => {
+            let top = arranged_area.loc.y.clamp(fullscreen_area.loc.y, bottom);
+            fullscreen_area.loc.y = top;
+            fullscreen_area.size.h = bottom - top;
+        }
+        Anchor::BOTTOM => {
+            let new_bottom = arranged_bottom.clamp(fullscreen_area.loc.y, bottom);
+            fullscreen_area.size.h = new_bottom - fullscreen_area.loc.y;
+        }
+        Anchor::LEFT => {
+            let left = arranged_area.loc.x.clamp(fullscreen_area.loc.x, right);
+            fullscreen_area.loc.x = left;
+            fullscreen_area.size.w = right - left;
+        }
+        Anchor::RIGHT => {
+            let new_right = arranged_right.clamp(fullscreen_area.loc.x, right);
+            fullscreen_area.size.w = new_right - fullscreen_area.loc.x;
+        }
+        _ => unreachable!("exclusive edge must contain exactly one edge"),
+    }
+}
+
+#[cfg(test)]
+mod fullscreen_reservation_tests {
+    use super::*;
+
+    fn layer(
+        edge: Anchor,
+        amount: u32,
+        reserves_fullscreen: bool,
+    ) -> (LayerSurfaceCachedState, bool) {
+        let mut state = LayerSurfaceCachedState::default();
+        state.anchor = Anchor::all();
+        state.exclusive_edge = Some(edge);
+        state.exclusive_zone = ExclusiveZone::Exclusive(amount);
+        (state, reserves_fullscreen)
+    }
+
+    #[test]
+    fn reservation_is_opt_in() {
+        let area = compute_fullscreen_working_area(
+            Size::from((1000, 800)),
+            [layer(Anchor::BOTTOM, 300, false)],
+        );
+        assert_eq!(area, Rectangle::from_size(Size::from((1000, 800))));
+    }
+
+    #[test]
+    fn reservation_insets_the_selected_edge() {
+        let area = compute_fullscreen_working_area(
+            Size::from((1000, 800)),
+            [
+                layer(Anchor::TOP, 50, true),
+                layer(Anchor::BOTTOM, 300, true),
+            ],
+        );
+        assert_eq!(area, Rectangle::new((0, 50).into(), (1000, 450).into()));
+    }
+
+    #[test]
+    fn reservation_includes_surfaces_stacked_below_the_opted_in_surface() {
+        let area = compute_fullscreen_working_area(
+            Size::from((1000, 800)),
+            [
+                layer(Anchor::BOTTOM, 40, false),
+                layer(Anchor::BOTTOM, 300, true),
+            ],
+        );
+        assert_eq!(area, Rectangle::new((0, 0).into(), (1000, 460).into()));
+    }
+}
+
 impl Niri {
     pub fn new(
         config: Rc<RefCell<Config>>,
@@ -3017,7 +3177,7 @@ impl Niri {
         let scale = output.current_scale();
         let transform = output.current_transform();
 
-        {
+        let fullscreen_working_area = {
             let mut layer_map = layer_map_for_output(output);
             for layer in layer_map.layers() {
                 layer.with_surfaces(|surface, data| {
@@ -3029,8 +3189,19 @@ impl Niri {
                 }
             }
             layer_map.arrange();
-        }
+            compute_fullscreen_working_area(
+                output_size.to_i32_round(),
+                layer_map.layers().map(|layer| {
+                    let reserves_fullscreen = self
+                        .mapped_layer_surfaces
+                        .get(layer)
+                        .is_some_and(|mapped| mapped.rules().reserve_space_from_fullscreen);
+                    (layer.cached_state(), reserves_fullscreen)
+                }),
+            )
+        };
 
+        set_fullscreen_working_area(output, fullscreen_working_area);
         self.layout.update_output_size(output);
 
         if let Some(state) = self.output_state.get_mut(output) {
@@ -6410,6 +6581,12 @@ impl Niri {
         }
 
         if changed {
+            // A layer rule may have changed fullscreen reservation, which affects layout geometry
+            // in addition to rendering.
+            let outputs = self.layout.outputs().cloned().collect::<Vec<_>>();
+            for output in outputs {
+                self.output_resized(&output);
+            }
             // FIXME: granular.
             self.queue_redraw_all();
         }
