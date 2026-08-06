@@ -18,7 +18,7 @@ use smithay::backend::input::{
     TabletToolTipState, TouchEvent,
 };
 use smithay::backend::libinput::LibinputInputBackend;
-use smithay::desktop::{PopupUngrabStrategy, Window};
+use smithay::desktop::Window;
 use smithay::input::dnd::DnDGrab;
 use smithay::input::keyboard::{keysyms, FilterResult, Keysym, Layout, ModifiersState};
 use smithay::input::pointer::{
@@ -4590,26 +4590,6 @@ impl State {
         let serial = SERIAL_COUNTER.next_serial();
 
         let under = self.niri.contents_under(pos);
-
-        // Dismiss popup grabs when a touch lands outside the popup, mirroring
-        // smithay's PopupPointerGrab which only covers pointer buttons.
-        if let Some(grab) = &self.niri.popup_grab {
-            let on_popup = grab
-                .grab
-                .current_grab()
-                .is_some_and(|popup| {
-                    under
-                        .surface
-                        .as_ref()
-                        .is_some_and(|(surface, _)| surface == &popup)
-                });
-            if !on_popup {
-                if let Some(grab) = &mut self.niri.popup_grab {
-                    grab.grab.ungrab(PopupUngrabStrategy::All);
-                    self.niri.popup_grab = None;
-                }
-            }
-        }
 
         let mod_key = self.backend.mod_key(&self.niri.config.borrow());
         let mods = self.niri.seat.get_keyboard().unwrap().modifier_state();

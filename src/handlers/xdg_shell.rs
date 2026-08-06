@@ -4,8 +4,8 @@ use calloop::Interest;
 use niri_config::PresetSize;
 use smithay::desktop::{
     find_popup_root_surface, get_popup_toplevel_coords, layer_map_for_output, utils, LayerSurface,
-    PopupKeyboardGrab, PopupKind, PopupManager, PopupPointerGrab, PopupUngrabStrategy, Window,
-    WindowSurfaceType,
+    PopupKeyboardGrab, PopupKind, PopupManager, PopupPointerGrab, PopupTouchGrab,
+    PopupUngrabStrategy, Window, WindowSurfaceType,
 };
 use smithay::input::pointer::Focus;
 use smithay::input::tablet::TabletSeatTrait;
@@ -446,7 +446,14 @@ impl XdgShellHandler for State {
         let pointer_grab_mismatches = pointer.is_grabbed()
             && !(pointer.has_grab(serial)
                 || grab.previous_serial().is_none_or(|s| pointer.has_grab(s)));
-        if (can_receive_keyboard_focus && keyboard_grab_mismatches) || pointer_grab_mismatches {
+        let touch = seat.get_touch().unwrap();
+        let touch_grab_mismatches = touch.is_grabbed()
+            && !(touch.has_grab(serial)
+                || grab.previous_serial().is_none_or(|s| touch.has_grab(s)));
+        if (can_receive_keyboard_focus && keyboard_grab_mismatches)
+            || pointer_grab_mismatches
+            || touch_grab_mismatches
+        {
             trace!("ignoring popup grab because of current grab mismatch");
             grab.ungrab(PopupUngrabStrategy::All);
             return;
@@ -457,6 +464,7 @@ impl XdgShellHandler for State {
             keyboard.set_grab(self, PopupKeyboardGrab::new(&grab), serial);
         }
         pointer.set_grab(self, PopupPointerGrab::new(&grab), serial, Focus::Keep);
+        touch.set_grab(self, PopupTouchGrab::new(&grab), serial);
         self.niri.popup_grab = Some(PopupGrabState {
             root,
             grab,
