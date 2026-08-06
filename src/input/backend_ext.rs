@@ -107,3 +107,17 @@ impl NiriInputDevice for VirtualPointer {
         true
     }
 }
+
+impl NiriInputDevice for smithay::reexports::reis::request::Device {
+    fn output(&self, _state: &State) -> Option<Output> {
+        // libei touch coordinates are logical and output-relative (the client aligns them to
+        // the regions advertised by the compositor), so there is no device-to-output binding.
+        None
+    }
+
+    fn is_unrotated_absolute_device(&self) -> bool {
+        // Coordinates come in the compositor's logical space, not the physical panel frame, so
+        // the output transform must not be re-applied (same as the virtual-pointer protocol).
+        true
+    }
+}

@@ -21,6 +21,7 @@ use niri_config::{
 };
 use smithay::backend::allocator::Fourcc;
 use smithay::backend::input::Keycode;
+use smithay::backend::libei::EiInputSeat;
 use smithay::backend::renderer::damage::OutputDamageTracker;
 use smithay::backend::renderer::element::memory::MemoryRenderBufferRenderElement;
 use smithay::backend::renderer::element::surface::WaylandSurfaceRenderElement;
@@ -295,6 +296,9 @@ pub struct Niri {
     pub fractional_scale_manager_state: FractionalScaleManagerState,
     pub seat_state: SeatState<State>,
     pub tablet_state: TabletManagerState,
+
+    /// Seat of the currently connected libei (EIS) touch client, if any.
+    pub libei_touch_seat: Option<EiInputSeat>,
     pub text_input_state: TextInputManagerState,
     pub input_method_state: InputMethodManagerState,
     pub keyboard_shortcuts_inhibit_state: KeyboardShortcutsInhibitState,
@@ -2738,6 +2742,7 @@ impl Niri {
             fractional_scale_manager_state,
             seat_state,
             tablet_state,
+            libei_touch_seat: None,
             pointer_gestures_state,
             relative_pointer_state,
             pointer_constraints_state,

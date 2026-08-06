@@ -205,6 +205,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         info!("IPC listening on: {}", socket_path.to_string_lossy());
     }
 
+    // Setup libei (EIS) input.
+    if let Err(err) = niri::backend::libei::setup(&mut state) {
+        warn!("error setting up libei input: {err:?}");
+    }
+
     // Setup xwayland-satellite integration.
     xwayland::satellite::setup(&mut state);
     if let Some(satellite) = &state.niri.satellite {
