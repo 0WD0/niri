@@ -18,7 +18,7 @@ use smithay::backend::input::{
     TabletToolTipState, TouchEvent,
 };
 use smithay::backend::libinput::LibinputInputBackend;
-use smithay::desktop::Window;
+use smithay::desktop::{PopupTouchGrab, Window};
 use smithay::input::dnd::DnDGrab;
 use smithay::input::keyboard::{keysyms, FilterResult, Keysym, Layout, ModifiersState};
 use smithay::input::pointer::{
@@ -409,8 +409,26 @@ impl State {
             let desc = TabletDescriptor::from(&device);
             tablet_seat.add_wp_tablet(&self.niri.display_handle, &desc);
         }
-        if device.has_capability(DeviceCapability::Touch) && self.niri.seat.get_touch().is_none() {
-            self.niri.seat.add_touch();
+        if device.has_capability(DeviceCapability::Touch) {
+            self.ensure_touch_handle();
+        }
+    }
+
+    pub(crate) fn ensure_touch_handle(&mut self) {
+        if self.niri.seat.get_touch().is_some() {
+            return;
+        }
+
+        let popup_grab = self
+            .niri
+            .popup_grab
+            .as_ref()
+            .map(|state| state.grab.clone());
+        let touch = self.niri.seat.add_touch();
+
+        if let Some(grab) = popup_grab {
+            let serial = grab.serial();
+            touch.set_grab(self, PopupTouchGrab::new(&grab), serial);
         }
     }
 

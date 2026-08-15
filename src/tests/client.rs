@@ -13,6 +13,8 @@ use single_pixel_buffer::v1::client::wp_single_pixel_buffer_manager_v1::WpSingle
 use smithay::reexports::wayland_protocols::wp::single_pixel_buffer;
 use smithay::reexports::wayland_protocols::wp::viewporter::client::wp_viewport::WpViewport;
 use smithay::reexports::wayland_protocols::wp::viewporter::client::wp_viewporter::WpViewporter;
+use smithay::reexports::wayland_protocols::xdg::shell::client::xdg_popup::{self, XdgPopup};
+use smithay::reexports::wayland_protocols::xdg::shell::client::xdg_positioner::XdgPositioner;
 use smithay::reexports::wayland_protocols::xdg::shell::client::xdg_surface::{self, XdgSurface};
 use smithay::reexports::wayland_protocols::xdg::shell::client::xdg_toplevel::{self, XdgToplevel};
 use smithay::reexports::wayland_protocols::xdg::shell::client::xdg_wm_base::{self, XdgWmBase};
@@ -30,6 +32,7 @@ use wayland_client::protocol::wl_compositor::WlCompositor;
 use wayland_client::protocol::wl_display::WlDisplay;
 use wayland_client::protocol::wl_output::{self, WlOutput};
 use wayland_client::protocol::wl_registry::{self, WlRegistry};
+use wayland_client::protocol::wl_seat::{self, WlSeat};
 use wayland_client::protocol::wl_surface::{self, WlSurface};
 use wayland_client::{Connection, Dispatch, Proxy as _, QueueHandle};
 
@@ -52,12 +55,14 @@ pub struct State {
 
     pub compositor: Option<WlCompositor>,
     pub xdg_wm_base: Option<XdgWmBase>,
+    pub seat: Option<WlSeat>,
     pub layer_shell: Option<ZwlrLayerShellV1>,
     pub spbm: Option<WpSinglePixelBufferManagerV1>,
     pub viewporter: Option<WpViewporter>,
 
     pub windows: Vec<Window>,
     pub layers: Vec<LayerSurface>,
+    pub popup_surfaces: Vec<XdgSurface>,
 }
 
 pub struct Window {
@@ -178,11 +183,13 @@ impl Client {
             outputs: HashMap::new(),
             compositor: None,
             xdg_wm_base: None,
+            seat: None,
             layer_shell: None,
             spbm: None,
             viewporter: None,
             windows: Vec::new(),
             layers: Vec::new(),
+            popup_surfaces: Vec::new(),
         };
 
         Self {
@@ -214,6 +221,10 @@ impl Client {
 
     pub fn create_window(&mut self) -> &mut Window {
         self.state.create_window()
+    }
+
+    pub fn create_popup_grab(&mut self, parent: &XdgSurface, serial: u32) {
+        self.state.create_popup_grab(parent, serial);
     }
 
     pub fn window(&mut self, surface: &WlSurface) -> &mut Window {
@@ -272,6 +283,25 @@ impl State {
 
         self.windows.push(window);
         self.windows.last_mut().unwrap()
+    }
+
+    pub fn create_popup_grab(&mut self, parent: &XdgSurface, serial: u32) {
+        let compositor = self.compositor.as_ref().unwrap();
+        let xdg_wm_base = self.xdg_wm_base.as_ref().unwrap();
+        let seat = self.seat.as_ref().unwrap();
+
+        let positioner = xdg_wm_base.create_positioner(&self.qh, ());
+        positioner.set_size(100, 100);
+        positioner.set_anchor_rect(0, 0, 100, 100);
+
+        let surface = compositor.create_surface(&self.qh, ());
+        let xdg_surface = xdg_wm_base.get_xdg_surface(&surface, &self.qh, ());
+        let popup = xdg_surface.get_popup(Some(parent), &positioner, &self.qh, ());
+        popup.grab(seat, serial);
+        surface.commit();
+
+        self.popup_surfaces.push(xdg_surface);
+        positioner.destroy();
     }
 
     pub fn window(&mut self, surface: &WlSurface) -> &mut Window {
@@ -518,6 +548,9 @@ impl Dispatch<WlRegistry, ()> for State {
                 } else if interface == WpViewporter::interface().name {
                     let version = min(version, WpViewporter::interface().version);
                     state.viewporter = Some(registry.bind(name, version, qh, ()));
+                } else if interface == WlSeat::interface().name {
+                    let version = min(version, WlSeat::interface().version);
+                    state.seat = Some(registry.bind(name, version, qh, ()));
                 } else if interface == WlOutput::interface().name {
                     let version = min(version, WlOutput::interface().version);
                     let output = registry.bind(name, version, qh, ());
@@ -560,6 +593,23 @@ impl Dispatch<WlOutput, ()> for State {
     }
 }
 
+impl Dispatch<WlSeat, ()> for State {
+    fn event(
+        _state: &mut Self,
+        _seat: &WlSeat,
+        event: <WlSeat as wayland_client::Proxy>::Event,
+        _data: &(),
+        _conn: &Connection,
+        _qhandle: &QueueHandle<Self>,
+    ) {
+        match event {
+            wl_seat::Event::Capabilities { .. } => (),
+            wl_seat::Event::Name { .. } => (),
+            _ => unreachable!(),
+        }
+    }
+}
+
 impl Dispatch<WlCompositor, ()> for State {
     fn event(
         _state: &mut Self,
@@ -586,6 +636,37 @@ impl Dispatch<XdgWmBase, ()> for State {
             xdg_wm_base::Event::Ping { serial } => {
                 xdg_wm_base.pong(serial);
             }
+            _ => unreachable!(),
+        }
+    }
+}
+
+impl Dispatch<XdgPositioner, ()> for State {
+    fn event(
+        _state: &mut Self,
+        _positioner: &XdgPositioner,
+        _event: <XdgPositioner as wayland_client::Proxy>::Event,
+        _data: &(),
+        _conn: &Connection,
+        _qhandle: &QueueHandle<Self>,
+    ) {
+        unreachable!()
+    }
+}
+
+impl Dispatch<XdgPopup, ()> for State {
+    fn event(
+        _state: &mut Self,
+        _popup: &XdgPopup,
+        event: <XdgPopup as wayland_client::Proxy>::Event,
+        _data: &(),
+        _conn: &Connection,
+        _qhandle: &QueueHandle<Self>,
+    ) {
+        match event {
+            xdg_popup::Event::Configure { .. } => (),
+            xdg_popup::Event::PopupDone => (),
+            xdg_popup::Event::Repositioned { .. } => (),
             _ => unreachable!(),
         }
     }
@@ -634,13 +715,16 @@ impl Dispatch<XdgSurface, ()> for State {
     ) {
         match event {
             xdg_surface::Event::Configure { serial } => {
-                let window = state
+                if let Some(window) = state
                     .windows
                     .iter_mut()
                     .find(|w| w.xdg_surface == *xdg_surface)
-                    .unwrap();
-                let configure = window.pending_configure.clone();
-                window.configures_received.push((serial, configure));
+                {
+                    let configure = window.pending_configure.clone();
+                    window.configures_received.push((serial, configure));
+                } else {
+                    assert!(state.popup_surfaces.contains(xdg_surface));
+                }
             }
             _ => unreachable!(),
         }
