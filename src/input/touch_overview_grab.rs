@@ -12,7 +12,6 @@ use smithay::input::{tablet, SeatHandler};
 use smithay::output::Output;
 use smithay::utils::{IsAlive, Logical, Point, SERIAL_COUNTER};
 
-use crate::input::axis_policy::InputAxisPolicy;
 use crate::input::AnyStartData;
 use crate::layout::workspace::{Workspace, WorkspaceId};
 use crate::niri::State;

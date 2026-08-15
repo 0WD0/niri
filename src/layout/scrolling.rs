@@ -3455,7 +3455,7 @@ impl<W: LayoutElement> ScrollingSpace<W> {
                     col.tab_indicator_area(),
                     col.tiles.len(),
                     scale,
-                    pos_in - column_pos,
+                    pos_in - col_pos,
                 ) {
                     let hit = HitType::Activate {
                         is_tab_indicator: true,
@@ -4531,7 +4531,10 @@ impl<W: LayoutElement> Column<W> {
         }
     }
 
-    pub fn set_anim_y_between_workspaces(&mut self) {
+    pub fn set_anim_between_workspaces(&mut self) {
+        if let Some(anim) = &mut self.move_x_animation {
+            anim.is_between_workspaces = true;
+        }
         if let Some(anim) = &mut self.move_y_animation {
             anim.is_between_workspaces = true;
         }

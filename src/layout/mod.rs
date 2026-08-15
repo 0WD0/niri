@@ -4362,7 +4362,7 @@ impl<W: LayoutElement> Layout<W> {
                 // being dropped), so setting it as moving between workspaces would just cause it to
                 // awkwardly sit unclipped for a moment before the animation runs out.
                 if !matches!(position, InsertPosition::Floating) {
-                    tile.set_anim_y_between_workspaces();
+                    tile.set_anim_between_workspaces();
                 }
             }
             MonitorSet::NoOutputs { workspaces, .. } => {

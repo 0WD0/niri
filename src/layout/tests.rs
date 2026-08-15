@@ -1804,6 +1804,47 @@ fn vertical_main_axis_overview_places_workspaces_horizontally() {
 }
 
 #[test]
+fn move_column_to_workspace_uses_activated_workspace_cross_axis() {
+    let mut layout = check_ops([
+        Op::AddOutput(1),
+        Op::AddWindow {
+            params: TestWindowParams::new(1),
+        },
+        Op::AddNamedWorkspace {
+            ws_name: 1,
+            output_name: Some(1),
+            layout_config: Some(Box::new(niri_config::LayoutPart {
+                main_axis: Some(MainAxis::Vertical),
+                ..Default::default()
+            })),
+        },
+    ]);
+
+    let MonitorSet::Normal { monitors, .. } = &mut layout.monitor_set else {
+        unreachable!()
+    };
+    let monitor = &mut monitors[0];
+    let target_idx = monitor
+        .workspaces
+        .iter()
+        .position(|workspace| workspace.name().is_some_and(|name| name == "ws1"))
+        .unwrap();
+
+    monitor.move_column_to_workspace(target_idx, true);
+
+    let workspace = &monitor.workspaces[monitor.active_workspace_idx];
+    let offset = workspace
+        .scrolling()
+        .active_column()
+        .unwrap()
+        .render_offset();
+    assert!(
+        offset.x.abs() > offset.y.abs(),
+        "expected transfer animation along the target workspace cross axis, got {offset:?}"
+    );
+}
+
+#[test]
 fn vertical_main_axis_set_column_width_changes_tile_height() {
     let mut options = Options::default();
     options.layout.main_axis = MainAxis::Vertical;

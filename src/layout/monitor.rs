@@ -910,14 +910,15 @@ impl<W: LayoutElement> Monitor<W> {
 
         let new_idx = self.idx_of_ws(new_id).unwrap();
 
-        // Animate vertical movement between workspaces.
+        // Animate cross-axis movement between workspaces.
         //
         // Recompute the source idx in case some workspace was removed during clean-up. If the
         // source workspace itself was removed, don't bother animating this since the removal is
         // instant anyway.
         if let Some(source_workspace_idx) = self.idx_of_ws(source_id) {
-            old_render_pos.y +=
-                self.workspace_size_with_gap(1.).h * (source_workspace_idx as f64 - new_idx as f64);
+            let delta = self.workspace_switch_span_with_gap(1.)
+                * (source_workspace_idx as f64 - new_idx as f64);
+            old_render_pos += self.overview_axis().cross_vec(delta);
         }
 
         let (tile, new_render_pos) = self.workspaces[new_idx]
@@ -925,7 +926,7 @@ impl<W: LayoutElement> Monitor<W> {
             .find(|(tile, _)| tile.window().id() == &window)
             .unwrap();
         tile.animate_move_from_with_config(old_render_pos - new_render_pos, config);
-        tile.set_anim_y_between_workspaces();
+        tile.set_anim_between_workspaces();
     }
 
     pub fn move_column_to_workspace_up(&mut self, activate: bool) {
@@ -968,10 +969,6 @@ impl<W: LayoutElement> Monitor<W> {
 
         let column = workspace.remove_active_column().unwrap();
 
-        // Animate vertical movement between workspaces.
-        old_render_pos.y +=
-            self.workspace_size_with_gap(1.).h * (source_workspace_idx as f64 - new_idx as f64);
-
         // If the view is following the column, match the animation.
         let config = if activate {
             self.options.animations.workspace_switch.0
@@ -983,13 +980,18 @@ impl<W: LayoutElement> Monitor<W> {
         self.add_column(new_idx, column, activate, Some(config));
 
         let new_idx = self.idx_of_ws(new_id).unwrap();
+        // Animate cross-axis movement between workspaces.
+        let delta = self.workspace_switch_span_with_gap(1.)
+            * (source_workspace_idx as f64 - new_idx as f64);
+        old_render_pos += self.overview_axis().cross_vec(delta);
+
         let (column, new_render_pos) = self.workspaces[new_idx]
             .scrolling_mut()
             .columns_with_render_positions_mut()
             .find(|(col, _pos)| col.id() == id)
             .unwrap();
         column.animate_move_from_with_config(old_render_pos - new_render_pos, config);
-        column.set_anim_y_between_workspaces();
+        column.set_anim_between_workspaces();
     }
 
     pub fn switch_workspace_up(&mut self) {
