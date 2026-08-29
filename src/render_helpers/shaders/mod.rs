@@ -47,6 +47,8 @@ impl Shaders {
                 UniformName::new("hue_interpolation", UniformType::_1f),
                 UniformName::new("color_from", UniformType::_4f),
                 UniformName::new("color_to", UniformType::_4f),
+                UniformName::new("gradient_shape", UniformType::_1f),
+                UniformName::new("inward_width", UniformType::_1f),
                 UniformName::new("grad_offset", UniformType::_2f),
                 UniformName::new("grad_width", UniformType::_1f),
                 UniformName::new("grad_vec", UniformType::_2f),

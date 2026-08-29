@@ -7,6 +7,7 @@ use smithay::utils::{Logical, Physical, Size};
 
 pub mod gradient_angle;
 pub mod gradient_area;
+pub mod gradient_inward;
 pub mod gradient_oklab;
 pub mod gradient_oklab_alpha;
 pub mod gradient_oklch_alpha;

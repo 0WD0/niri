@@ -95,6 +95,8 @@ pub struct Gradient {
     pub relative_to: GradientRelativeTo,
     #[knuffel(property(name = "in"), str, default)]
     pub in_: GradientInterpolation,
+    #[knuffel(property, default)]
+    pub shape: GradientShape,
 }
 
 impl From<Color> for Gradient {
@@ -105,6 +107,7 @@ impl From<Color> for Gradient {
             angle: 0,
             relative_to: GradientRelativeTo::Window,
             in_: GradientInterpolation::default(),
+            shape: GradientShape::default(),
         }
     }
 }
@@ -114,6 +117,13 @@ pub enum GradientRelativeTo {
     #[default]
     Window,
     WorkspaceView,
+}
+
+#[derive(knuffel::DecodeScalar, Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub enum GradientShape {
+    #[default]
+    Linear,
+    Inward,
 }
 
 #[derive(Default, Debug, Clone, Copy, PartialEq)]

@@ -1,6 +1,6 @@
 use std::iter::zip;
 
-use niri_config::{CornerRadius, Gradient, GradientRelativeTo};
+use niri_config::{CornerRadius, Gradient, GradientRelativeTo, GradientShape};
 use smithay::backend::renderer::element::{Element as _, Kind};
 use smithay::utils::{Logical, Point, Rectangle, Size};
 
@@ -98,9 +98,18 @@ impl FocusRing {
         let gradient = gradient.unwrap_or_else(|| Gradient::from(color));
 
         let full_rect = Rectangle::new(Point::from((-width, -width)), self.full_size);
-        let gradient_area = match gradient.relative_to {
-            GradientRelativeTo::Window => full_rect,
-            GradientRelativeTo::WorkspaceView => view_rect,
+        let gradient_area = if gradient.shape == GradientShape::Inward {
+            full_rect
+        } else {
+            match gradient.relative_to {
+                GradientRelativeTo::Window => full_rect,
+                GradientRelativeTo::WorkspaceView => view_rect,
+            }
+        };
+        let inward_width = if width > 0. {
+            width as f32
+        } else {
+            (self.full_size.w.min(self.full_size.h) / 2.) as f32
         };
 
         let rounded_corner_border_width = if is_border {
@@ -180,10 +189,12 @@ impl FocusRing {
             }
 
             for (border, (loc, size)) in zip(&mut self.borders, zip(self.locations, self.sizes)) {
-                border.update(
+                border.update_gradient(
                     size,
                     Rectangle::new(gradient_area.loc - loc, gradient_area.size),
                     gradient.in_,
+                    gradient.shape,
+                    inward_width,
                     gradient.from,
                     gradient.to,
                     ((gradient.angle as f32) - 90.).to_radians(),
@@ -199,10 +210,12 @@ impl FocusRing {
             self.buffers[0].resize(self.sizes[0]);
             self.locations[0] = Point::from((-width, -width));
 
-            self.borders[0].update(
+            self.borders[0].update_gradient(
                 self.sizes[0],
                 Rectangle::new(gradient_area.loc - self.locations[0], gradient_area.size),
                 gradient.in_,
+                gradient.shape,
+                inward_width,
                 gradient.from,
                 gradient.to,
                 ((gradient.angle as f32) - 90.).to_radians(),

@@ -12,6 +12,7 @@ use tracing_subscriber::EnvFilter;
 
 use crate::cases::gradient_angle::GradientAngle;
 use crate::cases::gradient_area::GradientArea;
+use crate::cases::gradient_inward::GradientInward;
 use crate::cases::gradient_oklab::GradientOklab;
 use crate::cases::gradient_oklab_alpha::GradientOklabAlpha;
 use crate::cases::gradient_oklch_alpha::GradientOklchAlpha;
@@ -118,6 +119,7 @@ fn build_ui(app: &adw::Application) {
 
     s.add(GradientAngle::new, "Gradient - Angle");
     s.add(GradientArea::new, "Gradient - Area");
+    s.add(GradientInward::new, "Gradient - Inward");
     s.add(GradientSrgb::new, "Gradient - Srgb");
     s.add(GradientSrgbLinear::new, "Gradient - SrgbLinear");
     s.add(GradientOklab::new, "Gradient - Oklab");

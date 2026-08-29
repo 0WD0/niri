@@ -383,6 +383,23 @@ layout {
 }
 ```
 
+Set `shape="inward"` to draw a gradient across the thickness of the border or focus ring.
+The `from` color is at the outer edge and the `to` color is at the inner edge.
+This is useful for fading a border into transparency on every side of the window:
+
+```kdl
+layout {
+    border {
+        on
+        width 8
+        active-gradient from="#0080ffff" to="#0080ff00" shape="inward"
+        inactive-gradient from="#505050ff" to="#50505000" shape="inward"
+    }
+}
+```
+
+For inward gradients, `angle` and `relative-to` do not apply.
+
 <sup>Since: 0.1.8</sup> You can set the gradient interpolation color space using syntax like `in="srgb-linear"` or `in="oklch longer hue"`.
 Supported color spaces are:
 

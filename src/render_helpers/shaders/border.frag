@@ -14,6 +14,8 @@ uniform float colorspace;
 uniform float hue_interpolation;
 uniform vec4 color_from;
 uniform vec4 color_to;
+uniform float gradient_shape;
+uniform float inward_width;
 uniform vec2 grad_offset;
 uniform float grad_width;
 uniform vec2 grad_vec;
@@ -193,8 +195,41 @@ vec4 color_mix(vec4 color1, vec4 color2, float color_ratio) {
     return premul_rect(vec4(linear_to_srgb(color_out.rgb), color_out.a));
 }
 
+float distance_from_outer_edge(vec2 coords) {
+    vec2 center;
+    float radius;
+
+    if (coords.x < outer_radius.x && coords.y < outer_radius.x) {
+        radius = outer_radius.x;
+        center = vec2(radius, radius);
+    } else if (geo_size.x - outer_radius.y < coords.x && coords.y < outer_radius.y) {
+        radius = outer_radius.y;
+        center = vec2(geo_size.x - radius, radius);
+    } else if (geo_size.x - outer_radius.z < coords.x
+            && geo_size.y - outer_radius.z < coords.y) {
+        radius = outer_radius.z;
+        center = vec2(geo_size.x - radius, geo_size.y - radius);
+    } else if (coords.x < outer_radius.w
+            && geo_size.y - outer_radius.w < coords.y) {
+        radius = outer_radius.w;
+        center = vec2(radius, geo_size.y - radius);
+    } else {
+        return min(
+            min(coords.x, geo_size.x - coords.x),
+            min(coords.y, geo_size.y - coords.y)
+        );
+    }
+
+    return radius - distance(coords, center);
+}
+
 vec4 gradient_color(vec2 coords) {
     coords = coords + grad_offset;
+    if (gradient_shape == 1.0) {
+        float frac = clamp(distance_from_outer_edge(coords) / inward_width, 0.0, 1.0);
+        return color_mix(color_from, color_to, frac);
+    }
+
 
     if ((grad_vec.x < 0.0 && 0.0 <= grad_vec.y) || (0.0 <= grad_vec.x && grad_vec.y < 0.0))
         coords.x -= grad_width;

@@ -794,7 +794,7 @@ mod tests {
                     width 5
                     active-color 0 100 200 255
                     inactive-color 255 200 100 0
-                    active-gradient from="rgba(10, 20, 30, 1.0)" to="#0080ffff" relative-to="workspace-view"
+                    active-gradient from="rgba(10, 20, 30, 1.0)" to="#0080ffff" relative-to="workspace-view" shape="inward"
                 }
 
                 border {
@@ -1347,6 +1347,7 @@ mod tests {
                                 color_space: Srgb,
                                 hue_interpolation: Shorter,
                             },
+                            shape: Inward,
                         },
                     ),
                     inactive_gradient: None,
@@ -1447,6 +1448,7 @@ mod tests {
                                 color_space: Srgb,
                                 hue_interpolation: Shorter,
                             },
+                            shape: Linear,
                         },
                     ),
                 },

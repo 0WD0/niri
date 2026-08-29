@@ -3,7 +3,7 @@ use std::rc::Rc;
 
 use glam::{Mat3, Vec2};
 use niri_config::{
-    Color, CornerRadius, GradientColorSpace, GradientInterpolation, HueInterpolation,
+    Color, CornerRadius, GradientColorSpace, GradientInterpolation, GradientShape, HueInterpolation,
 };
 use smithay::backend::renderer::element::{Element, Id, Kind, RenderElement, UnderlyingStorage};
 use smithay::backend::renderer::gles::{GlesError, GlesFrame, GlesRenderer, Uniform};
@@ -38,6 +38,8 @@ struct Parameters {
     color_from: Color,
     color_to: Color,
     angle: f32,
+    gradient_shape: GradientShape,
+    inward_width: f32,
     geometry: Rectangle<f64, Logical>,
     border_width: f32,
     corner_radius: CornerRadius,
@@ -71,6 +73,8 @@ impl BorderRenderElement {
                 color_from,
                 color_to,
                 angle,
+                gradient_shape: GradientShape::Linear,
+                inward_width: 0.,
                 geometry,
                 border_width,
                 corner_radius,
@@ -93,6 +97,8 @@ impl BorderRenderElement {
                 color_from: Default::default(),
                 color_to: Default::default(),
                 angle: 0.,
+                gradient_shape: GradientShape::Linear,
+                inward_width: 0.,
                 geometry: Default::default(),
                 border_width: 0.,
                 corner_radius: Default::default(),
@@ -121,10 +127,46 @@ impl BorderRenderElement {
         scale: f32,
         alpha: f32,
     ) {
+        self.update_gradient(
+            size,
+            gradient_area,
+            gradient_format,
+            GradientShape::Linear,
+            0.,
+            color_from,
+            color_to,
+            angle,
+            geometry,
+            border_width,
+            corner_radius,
+            scale,
+            alpha,
+        );
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn update_gradient(
+        &mut self,
+        size: Size<f64, Logical>,
+        gradient_area: Rectangle<f64, Logical>,
+        gradient_format: GradientInterpolation,
+        gradient_shape: GradientShape,
+        inward_width: f32,
+        color_from: Color,
+        color_to: Color,
+        angle: f32,
+        geometry: Rectangle<f64, Logical>,
+        border_width: f32,
+        corner_radius: CornerRadius,
+        scale: f32,
+        alpha: f32,
+    ) {
         let params = Parameters {
             size,
             gradient_area,
             gradient_format,
+            gradient_shape,
+            inward_width,
             color_from,
             color_to,
             angle,
@@ -147,6 +189,8 @@ impl BorderRenderElement {
             size,
             gradient_area,
             gradient_format,
+            gradient_shape,
+            inward_width,
             color_from,
             color_to,
             angle,
@@ -196,6 +240,11 @@ impl BorderRenderElement {
             HueInterpolation::Decreasing => 3.,
         };
 
+        let gradient_shape = match gradient_shape {
+            GradientShape::Linear => 0.,
+            GradientShape::Inward => 1.,
+        };
+
         self.inner.update(
             size,
             None,
@@ -206,6 +255,8 @@ impl BorderRenderElement {
                 Uniform::new("hue_interpolation", hue_interpolation),
                 Uniform::new("color_from", color_from.to_array_unpremul()),
                 Uniform::new("color_to", color_to.to_array_unpremul()),
+                Uniform::new("gradient_shape", gradient_shape),
+                Uniform::new("inward_width", inward_width),
                 Uniform::new("grad_offset", grad_offset.to_array()),
                 Uniform::new("grad_width", w),
                 Uniform::new("grad_vec", grad_vec.to_array()),

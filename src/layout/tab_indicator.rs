@@ -1,7 +1,9 @@
 use std::iter::zip;
 use std::mem;
 
-use niri_config::{CornerRadius, Gradient, GradientRelativeTo, TabIndicatorPosition};
+use niri_config::{
+    CornerRadius, Gradient, GradientRelativeTo, GradientShape, TabIndicatorPosition,
+};
 use smithay::utils::{Logical, Point, Rectangle, Size};
 
 use super::tile::Tile;
@@ -196,11 +198,17 @@ impl TabIndicator {
         ) {
             *loc = rect.loc;
 
-            let mut gradient_area = match tab.gradient.relative_to {
-                GradientRelativeTo::Window => tab.geometry,
-                GradientRelativeTo::WorkspaceView => area_view_rect,
+            let gradient_area = if tab.gradient.shape == GradientShape::Inward {
+                Rectangle::from_size(rect.size)
+            } else {
+                let mut area = match tab.gradient.relative_to {
+                    GradientRelativeTo::Window => tab.geometry,
+                    GradientRelativeTo::WorkspaceView => area_view_rect,
+                };
+                area.loc -= *loc;
+                area
             };
-            gradient_area.loc -= *loc;
+            let inward_width = (rect.size.w.min(rect.size.h) / 2.) as f32;
 
             let mut color_from = tab.gradient.from;
             let mut color_to = tab.gradient.to;
@@ -253,10 +261,12 @@ impl TabIndicator {
             let radius = radius.fit_to(rect.size.w as f32, rect.size.h as f32);
             tabs_left -= 1;
 
-            shader.update(
+            shader.update_gradient(
                 rect.size,
                 gradient_area,
                 tab.gradient.in_,
+                tab.gradient.shape,
+                inward_width,
                 color_from,
                 color_to,
                 ((tab.gradient.angle as f32) - 90.).to_radians(),
